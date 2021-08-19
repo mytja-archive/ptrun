@@ -1,4 +1,8 @@
 import Phaser from 'phaser';
+import { Terrain } from './objects/terrain';
+
+import dirtTileImg from './assets/dirtTile.jpg';
+import backgroundImg from './assets/oblakiBG.jpg'
 import { Player } from './objects/player';
 import playerImg from './assets/player_image.png';
 
@@ -13,18 +17,22 @@ class Game extends Phaser.Scene {
     }
 
     preload() {
+        this.load.image('dirtTile', dirtTileImg);
+        this.load.image('background', backgroundImg);
         this.load.image('player', playerImg);
     }
 
     create() {
-
-        this.player = new Player(this, 300, 300, 'player');
+        this.add.image(0, 0, 'background').setOrigin(0, 0).setScale(2.7);
+        
+        this.player = new Player(this, 150, 650, 'player');
         this.add.existing(this.player);
+        this.cameras.main.startFollow(this.player, false, 1, 1, -550, 200);
+        this.add.existing(new Terrain(this, 0, 0, 'dirtTile', this.player));
 
         this.cursors = this.input.keyboard.createCursorKeys();
         this.wasd = this.input.keyboard.addKeys('W,S,A,D');
     }
-
     update() {
         this.handlePlayerMove();
     }
@@ -55,7 +63,8 @@ const config = {
     physics: {
         default: 'arcade',
         arcade: {
-            debug: false
+            gravity: { y: 3000 },
+            debug: true
         }
     },
     scale: {
