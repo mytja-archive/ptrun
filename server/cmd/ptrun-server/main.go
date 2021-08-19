@@ -24,23 +24,22 @@ var (
 )
 
 var (
-	state = promauto.NewGauge(prometheus.GaugeOpts{
+	metricsstate = promauto.NewGauge(prometheus.GaugeOpts{
 		Name: "ptrun_state",
 		Help: "State",
 	})
 )
 
 func main() {
-	state.Set(0)
+	metricsstate.Set(0)
+
+	metrics := promhttp.Handler()
 
 	mux := goji.NewMux()
 	mux.HandleFunc(pat.Get("/ws"), func(w http.ResponseWriter, r *http.Request) {
 		server.Connect(w, r)
 	})
-	mux.HandleFunc(pat.Get("/metrics"), func(w http.ResponseWriter, r *http.Request) {
-		prometheus := promhttp.Handler()
-		prometheus.ServeHTTP(w, r)
-	})
+	mux.HandleFunc(pat.Get("/metrics"), metrics.ServeHTTP)
 
 	// Switch with zap.NewProduction() when needed
 	// or even better, add a flag to switch this as needed.
@@ -73,17 +72,18 @@ func main() {
 
 	done := make(chan os.Signal, 1)
 	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
-	state.Set(1)
+	metricsstate.Set(1)
 
 	go func() {
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			state.Set(2)
+			metricsstate.Set(2)
 			sugared.Errorw("error starting http server", zap.Error(err))
 		}
 	}()
 
 	<-done
 	sugared.Debug("stopping")
+	metricsstate.Set(-1)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer func() {
